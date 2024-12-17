@@ -55,6 +55,7 @@ class Camera:
 
     def get_frame(self):
         frame = self.camera.capture_array()
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
         _, jpeg = cv2.imencode('.jpg', frame)
         return jpeg.tobytes()
 
