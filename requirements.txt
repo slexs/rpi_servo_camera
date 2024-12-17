@@ -1,0 +1,4 @@
+Flask
+adafruit-circuitpython-servokit
+picamera2
+opencv-python-headless

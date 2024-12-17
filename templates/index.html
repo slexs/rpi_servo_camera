@@ -20,16 +20,27 @@
         .speed-control {
             margin: 20px;
         }
+        .video-container {
+            margin: 20px auto;
+            max-width: 640px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+        }
         .video-feed {
-            margin: 20px;
-            text-align: center;
+            width: 100%;
+            height: auto;
+            display: block;
         }
     </style>
 </head>
 <body>
-    <div class="video-feed">
-        <img src="{{ url_for('video_feed') }}" width="640" height="480">
-    </div>
+    <div class="container">
+        <h1>Camera Control</h1>
+        
+        <div class="video-container">
+            <img src="{{ url_for('video_feed') }}" class="video-feed" alt="Live Camera Feed">
+        </div>
 
     <div class="control-panel">
         <div class="button-grid">
@@ -65,8 +76,13 @@
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
+                const data = await response.json();
+                if (data.status !== 'success') {
+                    throw new Error('Movement failed');
+                }
             } catch (error) {
                 console.error('Error:', error);
+                alert('Failed to move camera: ' + error.message);
             }
         }
 
@@ -84,8 +100,13 @@
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
+                const data = await response.json();
+                if (data.status !== 'success') {
+                    throw new Error('Speed update failed');
+                }
             } catch (error) {
                 console.error('Error:', error);
+                alert('Failed to set speed: ' + error.message);
             }
         }
 
