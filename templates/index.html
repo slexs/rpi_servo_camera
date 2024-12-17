@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Camera Control</title>
     <style>
@@ -7,19 +8,23 @@
             text-align: center;
             margin: 20px;
         }
+
         .button-grid {
             display: inline-grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 5px;
         }
+
         .control-button {
             padding: 10px;
             margin: 5px;
             cursor: pointer;
         }
+
         .speed-control {
             margin: 20px;
         }
+
         .video-container {
             margin: 20px auto;
             max-width: 640px;
@@ -27,6 +32,7 @@
             border-radius: 8px;
             overflow: hidden;
         }
+
         .video-feed {
             width: 100%;
             height: auto;
@@ -34,103 +40,129 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>Camera Control</h1>
-        
+
         <div class="video-container">
             <img src="{{ url_for('video_feed') }}" class="video-feed" alt="Live Camera Feed">
         </div>
 
-    <div class="control-panel">
-        <div class="button-grid">
-            <button onclick="move('up_left')" class="control-button">↖</button>
-            <button onclick="move('up')" class="control-button">↑</button>
-            <button onclick="move('up_right')" class="control-button">↗</button>
-            <button onclick="move('left')" class="control-button">←</button>
-            <div></div>
-            <button onclick="move('right')" class="control-button">→</button>
-            <button onclick="move('down_left')" class="control-button">↙</button>
-            <button onclick="move('down')" class="control-button">↓</button>
-            <button onclick="move('down_right')" class="control-button">↘</button>
+        <div class="control-panel">
+            <div class="button-grid">
+                <button onclick="move('up_left')" class="control-button">↖</button>
+                <button onclick="move('up')" class="control-button">↑</button>
+                <button onclick="move('up_right')" class="control-button">↗</button>
+                <button onclick="move('left')" class="control-button">←</button>
+                <div></div>
+                <button onclick="move('right')" class="control-button">→</button>
+                <button onclick="move('down_left')" class="control-button">↙</button>
+                <button onclick="move('down')" class="control-button">↓</button>
+                <button onclick="move('down_right')" class="control-button">↘</button>
+            </div>
         </div>
-    </div>
 
-    <div class="speed-control">
-        <label for="speed">Movement Speed (ms):</label>
-        <input type="number" id="speed" name="speed" min="10" max="1000" value="50">
-        <button onclick="setSpeed()">Set Speed</button>
-    </div>
+        <div class="speed-control">
+            <label for="speed">Movement Speed (ms):</label>
+            <input type="number" id="speed" name="speed" min="10" max="1000" value="50">
+            <button onclick="setSpeed()">Set Speed</button>
+        </div>
 
-    <script>
-        async function move(direction) {
-            try {
-                const formData = new FormData();
-                formData.append('direction', direction);
-                
-                const response = await fetch('{{ url_for("move") }}', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+        <div class="zoom-control">
+            <button onclick="zoom('in')" class="control-button">Zoom In (+)</button>
+            <button onclick="zoom('out')" class="control-button">Zoom Out (-)</button>
+        </div>
+
+        <script>
+            async function move(direction) {
+                try {
+                    const formData = new FormData();
+                    formData.append('direction', direction);
+
+                    const response = await fetch('{{ url_for("move") }}', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    const data = await response.json();
+                    if (data.status !== 'success') {
+                        throw new Error('Movement failed');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to move camera: ' + error.message);
                 }
-                const data = await response.json();
-                if (data.status !== 'success') {
-                    throw new Error('Movement failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Failed to move camera: ' + error.message);
             }
-        }
 
-        async function setSpeed() {
-            try {
-                const speed = document.getElementById('speed').value;
-                const formData = new FormData();
-                formData.append('speed', speed);
-                
-                const response = await fetch('{{ url_for("set_speed") }}', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const data = await response.json();
-                if (data.status !== 'success') {
-                    throw new Error('Speed update failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Failed to set speed: ' + error.message);
-            }
-        }
+            async function setSpeed() {
+                try {
+                    const speed = document.getElementById('speed').value;
+                    const formData = new FormData();
+                    formData.append('speed', speed);
 
-        // Add keyboard controls
-        document.addEventListener('keydown', function(event) {
-            switch(event.key) {
-                case 'ArrowUp':
-                    event.preventDefault();
-                    move('up');
-                    break;
-                case 'ArrowDown':
-                    event.preventDefault();
-                    move('down');
-                    break;
-                case 'ArrowLeft':
-                    event.preventDefault();
-                    move('left');
-                    break;
-                case 'ArrowRight':
-                    event.preventDefault();
-                    move('right');
-                    break;
+                    const response = await fetch('{{ url_for("set_speed") }}', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    const data = await response.json();
+                    if (data.status !== 'success') {
+                        throw new Error('Speed update failed');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to set speed: ' + error.message);
+                }
             }
-        });
-    </script>
+
+            async function zoom(action) {
+                try {
+                    const formData = new FormData();
+                    formData.append('zoom', action);
+
+                    const response = await fetch('{{ url_for("zoom") }}', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Zoom request failed');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to zoom: ' + error.message);
+                }
+            }
+
+            // Add keyboard controls
+            document.addEventListener('keydown', function (event) {
+                switch (event.key) {
+                    case 'ArrowUp':
+                        event.preventDefault();
+                        move('up');
+                        break;
+                    case 'ArrowDown':
+                        event.preventDefault();
+                        move('down');
+                        break;
+                    case 'ArrowLeft':
+                        event.preventDefault();
+                        move('left');
+                        break;
+                    case 'ArrowRight':
+                        event.preventDefault();
+                        move('right');
+                        break;
+                }
+            });
+        </script>
 </body>
+
 </html>
