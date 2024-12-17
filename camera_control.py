@@ -24,8 +24,18 @@ INCREMENT = 5
 
 class Camera:
     def __init__(self):
+        # Force NullPreview on initialization
         self.camera = Picamera2()
+        # self.camera.start_preview(NullPreview())  # Explicitly use NullPreview
         self.camera.configure(self.camera.create_preview_configuration())
+
+        # Use AWB control properly with integer values
+        AWB_MODE_AUTO = 0  # Corresponds to AWB auto mode
+        self.camera.set_controls({"AwbMode": AWB_MODE_AUTO})
+        
+        # Optionally set custom AWB gains (example: manual gains)
+        # self.camera.set_controls({"AwbEnable": False, "ColourGains": (1.5, 1.0)})
+
         self.camera.start()
 
     def get_frame(self):
