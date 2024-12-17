@@ -1,0 +1,54 @@
+# Python bytecode files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment directories
+venv/
+env/
+*.env
+
+# Flask specific
+instance/
+*.db
+*.sqlite3
+*.log
+*.pid
+
+# IDEs and text editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Flask migrations
+migrations/
+
+# Python package manager files
+pip-wheel-metadata/
+
+# Test results
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+*.tox/
+*.nox/
+*.coverage/
+*.hypothesis/
+
+# Pytest cache
+.cache/
+
+# Docker files
+docker-compose.override.yml
+Dockerfile*
+
+# Sentry configuration (if applicable)
+.sentry/

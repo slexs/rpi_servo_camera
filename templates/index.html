@@ -1,0 +1,38 @@
+index.html: "<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Camera Control</title>
+</head>
+
+<body>
+    <img src="{{ url_for('video_feed') }}" alt="Live Video Feed">
+
+    <h1>Camera Control</h1>
+    <form action="/move" method="post">
+        <button name="direction" value="up">Up</button><br>
+        <button name="direction" value="up_left">Up-Left</button>
+        <button name="direction" value="left">Left</button>
+        <button name="direction" value="down_left">Down-Left</button><br>
+        <button name="direction" value="down">Down</button><br>
+        <button name="direction" value="up_right">Up-Right</button>
+        <button name="direction" value="right">Right</button>
+        <button name="direction" value="down_right">Down-Right</button><br>
+    </form>
+    <form action="/set_speed" method="post">
+        <label for="speed">Movement Speed (ms):</label>
+        <input type="range" id="speed" name="speed" min="1" max="100" value="50">
+        <span id="speedValue">50</span> ms
+        <button type="submit">Set Speed</button>
+    </form>
+</body>
+<script>
+    const speedSlider = document.getElementById('speed');
+    const speedValue = document.getElementById('speedValue');
+    speedSlider.oninput = function () {
+        speedValue.textContent = this.value;
+    }
+</script>
+
+</html>" 
