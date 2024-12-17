@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, Response
+from flask import Flask, render_template, request, Response
 from adafruit_servokit import ServoKit
 import time
 import cv2
@@ -12,6 +13,10 @@ camera = cv2.VideoCapture(0)  # Use appropriate camera index
 # Initialize servo angles
 pan_angle = 90  # Center position
 tilt_angle = 90  # Center position
+camera = cv2.VideoCapture(0)
+
+pan_angle = 90
+tilt_angle = 90
 kit.servo[0].angle = pan_angle
 kit.servo[1].angle = tilt_angle
 
@@ -19,6 +24,7 @@ kit.servo[1].angle = tilt_angle
 movement_speed = 0.05  # Default speed
 
 # Define movement increments
+movement_speed = 0.05
 INCREMENT = 5
 
 def generate_frames():
@@ -53,6 +59,8 @@ def set_speed():
     movement_speed = speed_ms / 1000.0  # Convert ms to seconds
     return redirect(url_for('index'))
 
+    movement_speed = speed_ms / 1000.0
+    return {'status': 'success'}
 @app.route('/move', methods=['POST'])
 def move():
     global pan_angle, tilt_angle
@@ -83,5 +91,6 @@ def move():
     kit.servo[1].angle = tilt_angle
     return redirect(url_for('index'))
 
+    return {'status': 'success'}
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

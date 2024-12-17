@@ -1,38 +1,115 @@
-index.html: "<!DOCTYPE html>
-<html lang="en">
-
+<!DOCTYPE html>
+<html>
 <head>
-    <meta charset="UTF-8">
     <title>Camera Control</title>
+    <style>
+        .control-panel {
+            text-align: center;
+            margin: 20px;
+        }
+        .button-grid {
+            display: inline-grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+        .control-button {
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .speed-control {
+            margin: 20px;
+        }
+        .video-feed {
+            margin: 20px;
+            text-align: center;
+        }
+    </style>
 </head>
-
 <body>
-    <img src="{{ url_for('video_feed') }}" alt="Live Video Feed">
+    <div class="video-feed">
+        <img src="{{ url_for('video_feed') }}" width="640" height="480">
+    </div>
 
-    <h1>Camera Control</h1>
-    <form action="/move" method="post">
-        <button name="direction" value="up">Up</button><br>
-        <button name="direction" value="up_left">Up-Left</button>
-        <button name="direction" value="left">Left</button>
-        <button name="direction" value="down_left">Down-Left</button><br>
-        <button name="direction" value="down">Down</button><br>
-        <button name="direction" value="up_right">Up-Right</button>
-        <button name="direction" value="right">Right</button>
-        <button name="direction" value="down_right">Down-Right</button><br>
-    </form>
-    <form action="/set_speed" method="post">
+    <div class="control-panel">
+        <div class="button-grid">
+            <button onclick="move('up_left')" class="control-button">↖</button>
+            <button onclick="move('up')" class="control-button">↑</button>
+            <button onclick="move('up_right')" class="control-button">↗</button>
+            <button onclick="move('left')" class="control-button">←</button>
+            <div></div>
+            <button onclick="move('right')" class="control-button">→</button>
+            <button onclick="move('down_left')" class="control-button">↙</button>
+            <button onclick="move('down')" class="control-button">↓</button>
+            <button onclick="move('down_right')" class="control-button">↘</button>
+        </div>
+    </div>
+
+    <div class="speed-control">
         <label for="speed">Movement Speed (ms):</label>
-        <input type="range" id="speed" name="speed" min="1" max="100" value="50">
-        <span id="speedValue">50</span> ms
-        <button type="submit">Set Speed</button>
-    </form>
-</body>
-<script>
-    const speedSlider = document.getElementById('speed');
-    const speedValue = document.getElementById('speedValue');
-    speedSlider.oninput = function () {
-        speedValue.textContent = this.value;
-    }
-</script>
+        <input type="number" id="speed" name="speed" min="10" max="1000" value="50">
+        <button onclick="setSpeed()">Set Speed</button>
+    </div>
 
-</html>" 
+    <script>
+        async function move(direction) {
+            try {
+                const formData = new FormData();
+                formData.append('direction', direction);
+                
+                const response = await fetch('{{ url_for("move") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function setSpeed() {
+            try {
+                const speed = document.getElementById('speed').value;
+                const formData = new FormData();
+                formData.append('speed', speed);
+                
+                const response = await fetch('{{ url_for("set_speed") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Add keyboard controls
+        document.addEventListener('keydown', function(event) {
+            switch(event.key) {
+                case 'ArrowUp':
+                    event.preventDefault();
+                    move('up');
+                    break;
+                case 'ArrowDown':
+                    event.preventDefault();
+                    move('down');
+                    break;
+                case 'ArrowLeft':
+                    event.preventDefault();
+                    move('left');
+                    break;
+                case 'ArrowRight':
+                    event.preventDefault();
+                    move('right');
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
