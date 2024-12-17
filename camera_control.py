@@ -13,8 +13,9 @@ app = Flask(__name__)
 kit = ServoKit(channels=16)
 
 # Initialize servo angles
-pan_angle = 90  # Center position
-tilt_angle = 90  # Center position
+pan_angle = 85  # Pan starting position
+tilt_angle = 19  # Tilt starting position
+
 kit.servo[0].angle = pan_angle
 kit.servo[1].angle = tilt_angle
 
@@ -131,6 +132,11 @@ def move():
     kit.servo[1].angle = tilt_angle
     return {'status': 'success'}
 
+@app.route('/get_servo_position', methods=['GET'])
+def get_servo_position():
+    # Return current servo positions
+    global pan_angle, tilt_angle
+    return {'status': 'success', 'pan': pan_angle, 'tilt': tilt_angle}
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000) 
