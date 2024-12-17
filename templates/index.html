@@ -10,59 +10,60 @@
             gap: 5px;
         }
 
-        .control-panel {
+        .grid-wrapper {
+            display: inline-block;
+            position: relative;
+        }
+
+        .control-container {
             position: absolute;
             bottom: 10px;
             left: 50%;
             transform: translateX(-50%);
+            /* This container holds both the panel and the toggle button */
+        }
+
+        .control-panel {
             background: rgba(0, 0, 0, 0.5);
-            padding: 10px;
+            /* padding: 10px; */
+            padding: 0;
             border-radius: 8px;
         }
 
         .control-button {
-            padding: 10px;
-            margin: 5px;
+            width: 50px;
+            /* Adjust as needed */
+            height: 50px;
+            /* Adjust as needed */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             background-color: #ddd;
             border: none;
             border-radius: 4px;
             font-size: 18px;
+            /* Same font-size for arrows and T */
         }
 
-        #toggle-button {
+        .toggle-button {
             position: absolute;
-            bottom: 50px; /* Adjust this to center it vertically with the grid */
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%); /* Horizontal centering */
+            transform: translate(-50%, -50%);
             background-color: #f0f0f0;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
-            font-size: 18px;
-            border-radius: 4px;
-            z-index: 10; /* Keep the toggle button above everything else */
+            font-weight: bold;
+            z-index: 10;
+            /* Ensures it stays visible and clickable */
         }
-
-        .speed-control {
-            margin: 20px;
-        }
-
 
         .video-container {
+            position: relative;
             margin: 20px auto;
             max-width: 60%;
             border: 2px solid #333;
             border-radius: 8px;
             overflow: hidden;
-            position: relative;
-            /* Relative positioning for child absolute elements */
-        }
-
-        .video-feed {
-            width: 100%;
-            height: auto;
-            display: block;
         }
     </style>
 </head>
@@ -74,158 +75,162 @@
         <div class="video-container">
             <img src="{{ url_for('video_feed') }}" class="video-feed" alt="Live Camera Feed">
 
-            <!-- Control Panel -->
-            <div class="control-panel" id="control-panel">
-                <div class="button-grid">
-                    <button onclick="move('up_left')" class="control-button">↖</button>
-                    <button onclick="move('up')" class="control-button">↑</button>
-                    <button onclick="move('up_right')" class="control-button">↗</button>
-                    <button onclick="move('left')" class="control-button">←</button>
-                    <div></div> <!-- Placeholder to retain grid structure -->
-                    <button onclick="move('right')" class="control-button">→</button>
-                    <button onclick="move('down_left')" class="control-button">↙</button>
-                    <button onclick="move('down')" class="control-button">↓</button>
-                    <button onclick="move('down_right')" class="control-button">↘</button>
+            <!-- Common container for both control panel and toggle button -->
+            <div class="control-container">
+                <div class="control-panel" id="control-panel">
+                    <div class="grid-wrapper">
+                        <div class="button-grid">
+                            <button onclick="move('up_left')" class="control-button">↖</button>
+                            <button onclick="move('up')" class="control-button">↑</button>
+                            <button onclick="move('up_right')" class="control-button">↗</button>
+                            <button onclick="move('left')" class="control-button">←</button>
+                            <div></div> <!-- Placeholder cell -->
+                            <button onclick="move('right')" class="control-button">→</button>
+                            <button onclick="move('down_left')" class="control-button">↙</button>
+                            <button onclick="move('down')" class="control-button">↓</button>
+                            <button onclick="move('down_right')" class="control-button">↘</button>
+                        </div>
+                        <button onclick="toggleControls()" class="control-button toggle-button"
+                            id="toggle-button">T</button>
+                    </div>
                 </div>
             </div>
-
-            <!-- Toggle Button - Positioned in Center -->
-            <button onclick="toggleControls()" class="control-button" id="toggle-button">T</button>
         </div>
+    </div>
 
-        <div id="servo-position" style="text-align: center; margin: 20px;">
-            <h3>Servo Position</h3>
-            <p>Pan (X): <span id="pan-value">90</span>°</p>
-            <p>Tilt (Y): <span id="tilt-value">90</span>°</p>
-        </div>
+    <div id="servo-position" style="text-align: center; margin: 20px;">
+        <h3>Servo Position</h3>
+        <p>Pan (X): <span id="pan-value">90</span>°</p>
+        <p>Tilt (Y): <span id="tilt-value">90</span>°</p>
+    </div>
 
-        <div class="speed-control">
-            <label for="speed">Movement Speed (ms):</label>
-            <input type="number" id="speed" name="speed" min="10" max="1000" value="50">
-            <button onclick="setSpeed()">Set Speed</button>
-        </div>
+    <div class="speed-control">
+        <label for="speed">Movement Speed (ms):</label>
+        <input type="number" id="speed" name="speed" min="10" max="1000" value="50">
+        <button onclick="setSpeed()">Set Speed</button>
+    </div>
 
-        <div class="zoom-control">
-            <button onclick="zoom('in')" class="control-button">Zoom In (+)</button>
-            <button onclick="zoom('out')" class="control-button">Zoom Out (-)</button>
-        </div>
+    <div class="zoom-control">
+        <button onclick="zoom('in')" class="control-button">Zoom In (+)</button>
+        <button onclick="zoom('out')" class="control-button">Zoom Out (-)</button>
+    </div>
 
-        <script>
-            async function move(direction) {
-                try {
-                    const formData = new FormData();
-                    formData.append('direction', direction);
+    <script>
+        async function move(direction) {
+            try {
+                const formData = new FormData();
+                formData.append('direction', direction);
 
-                    const response = await fetch('{{ url_for("move") }}', {
-                        method: 'POST',
-                        body: formData
-                    });
+                const response = await fetch('{{ url_for("move") }}', {
+                    method: 'POST',
+                    body: formData
+                });
 
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    const data = await response.json();
-                    if (data.status !== 'success') {
-                        throw new Error('Movement failed');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Failed to move camera: ' + error.message);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
                 }
-            }
-
-            async function setSpeed() {
-                try {
-                    const speed = document.getElementById('speed').value;
-                    const formData = new FormData();
-                    formData.append('speed', speed);
-
-                    const response = await fetch('{{ url_for("set_speed") }}', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    const data = await response.json();
-                    if (data.status !== 'success') {
-                        throw new Error('Speed update failed');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Failed to set speed: ' + error.message);
+                const data = await response.json();
+                if (data.status !== 'success') {
+                    throw new Error('Movement failed');
                 }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to move camera: ' + error.message);
             }
+        }
 
-            async function zoom(action) {
-                try {
-                    const formData = new FormData();
-                    formData.append('zoom', action);
+        async function setSpeed() {
+            try {
+                const speed = document.getElementById('speed').value;
+                const formData = new FormData();
+                formData.append('speed', speed);
 
-                    const response = await fetch('{{ url_for("zoom") }}', {
-                        method: 'POST',
-                        body: formData
-                    });
+                const response = await fetch('{{ url_for("set_speed") }}', {
+                    method: 'POST',
+                    body: formData
+                });
 
-                    if (!response.ok) {
-                        throw new Error('Zoom request failed');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Failed to zoom: ' + error.message);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
                 }
-            }
-
-            async function fetchServoPosition() {
-                try {
-                    const response = await fetch('{{ url_for("get_servo_position") }}');
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch servo position');
-                    }
-
-                    const data = await response.json();
-                    if (data.status === 'success') {
-                        document.getElementById('pan-value').innerText = data.pan;
-                        document.getElementById('tilt-value').innerText = data.tilt;
-                    } else {
-                        throw new Error('Error in servo data');
-                    }
-                } catch (error) {
-                    console.error('Error fetching servo position:', error.message);
+                const data = await response.json();
+                if (data.status !== 'success') {
+                    throw new Error('Speed update failed');
                 }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to set speed: ' + error.message);
             }
+        }
 
-            // Fetch servo position every 500ms
-            setInterval(fetchServoPosition, 500);            
+        async function zoom(action) {
+            try {
+                const formData = new FormData();
+                formData.append('zoom', action);
 
-            function toggleControls() {
-                const controlPanel = document.getElementById('control-panel');
-                controlPanel.style.display = controlPanel.style.display === 'none' ? 'block' : 'none';
-            }
+                const response = await fetch('{{ url_for("zoom") }}', {
+                    method: 'POST',
+                    body: formData
+                });
 
-            // Add keyboard controls
-            document.addEventListener('keydown', function (event) {
-                switch (event.key) {
-                    case 'ArrowUp':
-                        event.preventDefault();
-                        move('up');
-                        break;
-                    case 'ArrowDown':
-                        event.preventDefault();
-                        move('down');
-                        break;
-                    case 'ArrowLeft':
-                        event.preventDefault();
-                        move('left');
-                        break;
-                    case 'ArrowRight':
-                        event.preventDefault();
-                        move('right');
-                        break;
+                if (!response.ok) {
+                    throw new Error('Zoom request failed');
                 }
-            });
-        </script>
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to zoom: ' + error.message);
+            }
+        }
+
+        async function fetchServoPosition() {
+            try {
+                const response = await fetch('{{ url_for("get_servo_position") }}');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch servo position');
+                }
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('pan-value').innerText = data.pan;
+                    document.getElementById('tilt-value').innerText = data.tilt;
+                } else {
+                    throw new Error('Error in servo data');
+                }
+            } catch (error) {
+                console.error('Error fetching servo position:', error.message);
+            }
+        }
+
+        // Fetch servo position every 500ms
+        setInterval(fetchServoPosition, 500);
+
+        function toggleControls() {
+            const grid = document.querySelector('.button-grid');
+            grid.style.display = (grid.style.display === 'none') ? 'inline-grid' : 'none';
+        }
+
+        // Add keyboard controls
+        document.addEventListener('keydown', function (event) {
+            switch (event.key) {
+                case 'ArrowUp':
+                    event.preventDefault();
+                    move('up');
+                    break;
+                case 'ArrowDown':
+                    event.preventDefault();
+                    move('down');
+                    break;
+                case 'ArrowLeft':
+                    event.preventDefault();
+                    move('left');
+                    break;
+                case 'ArrowRight':
+                    event.preventDefault();
+                    move('right');
+                    break;
+            }
+        });
+    </script>
 </body>
 
 </html>
