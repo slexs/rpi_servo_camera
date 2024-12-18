@@ -226,6 +226,29 @@
 
         let currentSettings = null;
 
+        async function move(direction) {
+            try {
+                const formData = new FormData();
+                formData.append('direction', direction);
+
+                const response = await fetch('{{ url_for("move") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                if (data.status !== 'success') {
+                    throw new Error('Movement failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to move camera: ' + error.message);
+            }
+        }
+
         function toggleSettings(option) {
             if (currentSettings === option) {
                 settingsContainer.style.display = 'none';
@@ -305,72 +328,6 @@
                 console.error('Error fetching servo position:', error.message);
             }
         }
-
-        // async function move(direction) {
-        //     try {
-        //         const formData = new FormData();
-        //         formData.append('direction', direction);
-
-        //         const response = await fetch('{{ url_for("move") }}', {
-        //             method: 'POST',
-        //             body: formData
-        //         });
-
-        //         if (!response.ok) {
-        //             throw new Error('Network response was not ok');
-        //         }
-        //         const data = await response.json();
-        //         if (data.status !== 'success') {
-        //             throw new Error('Movement failed');
-        //         }
-        //     } catch (error) {
-        //         console.error('Error:', error);
-        //         alert('Failed to move camera: ' + error.message);
-        //     }
-        // }
-
-        // async function setSpeed() {
-        //     try {
-        //         const speed = document.getElementById('speed').value;
-        //         const formData = new FormData();
-        //         formData.append('speed', speed);
-
-        //         const response = await fetch('{{ url_for("set_speed") }}', {
-        //             method: 'POST',
-        //             body: formData
-        //         });
-
-        //         if (!response.ok) {
-        //             throw new Error('Network response was not ok');
-        //         }
-        //         const data = await response.json();
-        //         if (data.status !== 'success') {
-        //             throw new Error('Speed update failed');
-        //         }
-        //     } catch (error) {
-        //         console.error('Error:', error);
-        //         alert('Failed to set speed: ' + error.message);
-        //     }
-        // }
-
-        // async function zoom(action) {
-        //     try {
-        //         const formData = new FormData();
-        //         formData.append('zoom', action);
-
-        //         const response = await fetch('{{ url_for("zoom") }}', {
-        //             method: 'POST',
-        //             body: formData
-        //         });
-
-        //         if (!response.ok) {
-        //             throw new Error('Zoom request failed');
-        //         }
-        //     } catch (error) {
-        //         console.error('Error:', error);
-        //         alert('Failed to zoom: ' + error.message);
-        //     }
-        // }
 
         async function fetchServoPosition() {
             try {
