@@ -80,6 +80,24 @@ def video_feed():
     return Response(generate(),
                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/reset', methods=['POST'])
+def reset():
+    global pan_angle, tilt_angle
+    # Reset servo angles to original starting positions
+    pan_angle = 85
+    tilt_angle = 19
+    kit.servo[0].angle = pan_angle
+    kit.servo[1].angle = tilt_angle
+
+    # Reset zoom to 1.0 (no zoom)
+    camera.zoom_level = 1.0
+    
+    # Apply the zoom settings
+    camera.set_zoom(zoom_in=False)  # calling set_zoom with zoom_in=False will ensure it doesn't go beyond min zoom
+    camera.set_zoom(zoom_in=False)  # If needed multiple times to ensure no zoom.
+
+    return {'status': 'success'}
+
 @app.route('/zoom', methods=['POST'])
 def zoom():
     start_time = time.time()

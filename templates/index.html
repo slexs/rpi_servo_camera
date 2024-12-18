@@ -153,6 +153,7 @@
         <button onclick="toggleSettings('speed')">Movement Speed</button>
         <button onclick="toggleSettings('zoom')">Zoom</button>
         <button onclick="toggleSettings('servo')">Servo Position</button>
+        <button onclick="resetCamera()">Reset Camera</button>
     </div>
 
     <div id="settings-container" class="settings-container">
@@ -208,6 +209,7 @@
         const speedSettings = document.getElementById('speed-settings');
         const zoomSettings = document.getElementById('zoom-settings');
         const servoSettings = document.getElementById('servo-settings');
+
         let currentSettings = null;
         let servoPollingInterval = null;
 
@@ -333,6 +335,21 @@
         function toggleControls() {
             const grid = document.querySelector('.button-grid');
             grid.style.display = (grid.style.display === 'none') ? 'inline-grid' : 'none';
+        }
+
+        async function resetCamera() {
+            try {
+                const response = await fetch('{{ url_for("reset") }}', { method: 'POST' });
+                if (!response.ok) {
+                    throw new Error('Reset request failed');
+                }
+                // Optionally, update the UI to reflect reset state
+                document.getElementById('pan-value').innerText = 90;
+                document.getElementById('tilt-value').innerText = 90;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to reset camera: ' + error.message);
+            }
         }
 
         document.addEventListener('keydown', function (event) {
