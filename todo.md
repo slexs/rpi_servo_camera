@@ -1,6 +1,6 @@
 1) make "menu" with movement speed slider, zoom +/-, pan x/tilt y servo position information 
 
-2) Make video stream a service running in background 
+2) Make camera_control.py a service running in background 
 
 3) make timelapse, picture every 4h, timelapse GIF every 7d? concatenate? 
 

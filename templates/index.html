@@ -4,15 +4,105 @@
 <head>
     <title>Camera Control</title>
     <style>
-        .button-grid {
-            display: inline-grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 5px;
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
         }
 
-        .grid-wrapper {
-            display: inline-block;
+        .menu-bar {
+            background-color: #333;
+            color: white;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 10px;
             position: relative;
+        }
+
+        .menu-bar button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 10px;
+        }
+
+        .menu-bar button:hover {
+            background-color: #444;
+            border-radius: 4px;
+        }
+
+        .settings-container {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            width: 100%;
+            display: none;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            color: white;
+        }
+
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .zoom-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .zoom-container button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        .servo-position {
+            text-align: center;
+        }
+
+        /* #video-container {
+            width: 100%;
+            height: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+            background: black;
+        } */
+
+        .video-container {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            margin: 20px auto;
+            border: 2px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: black;
+        }
+
+        #video-stream {
+            /* width: 100%;
+            height: auto; */
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .control-buttons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .control-container {
@@ -20,21 +110,17 @@
             bottom: 10px;
             left: 50%;
             transform: translateX(-50%);
-            /* This container holds both the panel and the toggle button */
         }
 
         .control-panel {
             background: rgba(0, 0, 0, 0.5);
-            /* padding: 10px; */
             padding: 0;
             border-radius: 8px;
         }
 
         .control-button {
             width: 50px;
-            /* Adjust as needed */
             height: 50px;
-            /* Adjust as needed */
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -43,7 +129,17 @@
             border: none;
             border-radius: 4px;
             font-size: 18px;
-            /* Same font-size for arrows and T */
+        }
+
+        .button-grid {
+            display: inline-grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+
+        .grid-wrapper {
+            position: relative;
+            display: inline-block;
         }
 
         .toggle-button {
@@ -51,136 +147,125 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: #f0f0f0;
-            font-weight: bold;
-            z-index: 10;
-            /* Ensures it stays visible and clickable */
-        }
-
-        #video-container {
-            width: 100%;
-            max-width: 100%;
-            /* Ensure it doesn't overflow */
-            height: auto;
-            /* Automatically adjust height */
-            display: flex;
-            justify-content: center;
-            /* Center the video horizontally */
+            width: 50px;
+            /* Match arrow button size */
+            height: 50px;
+            /* Match arrow button size */
+            background-color: #ddd;
+            border: none;
+            border-radius: 4px;
+            font-size: 18px;
+            display: inline-flex;
             align-items: center;
-            /* Center the video vertically */
-            overflow: hidden;
-            /* Prevent video from overflowing */
-            position: relative;
-            /* For proper scaling */
-        }
-
-        #video-stream {
-            width: 100%;
-            /* Fit the container's width */
-            height: auto;
-            /* Maintain aspect ratio */
-            max-height: 100vh;
-            /* Ensure it doesn't exceed the viewport height */
-            object-fit: contain;
-            /* Ensure video scales without distortion */
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <!-- <h1>Camera Control</h1> -->
+    <div class="menu-bar">
+        <button onclick="toggleSettings('speed')">Movement Speed</button>
+        <button onclick="toggleSettings('zoom')">Zoom</button>
+        <button onclick="toggleSettings('servo')">Servo Position</button>
+    </div>
 
-        <div class="video-container">
-            <!-- <img src="{{ url_for('video_feed') }}" class="video-feed" alt="Live Camera Feed"> -->
-            <img src="/video_feed" id="video-stream" />
+    <div id="settings-container" class="settings-container">
+        <div id="speed-settings" class="slider-container">
+            <h3>Movement Speed</h3>
+            <label for="speed-slider">Speed (ms):</label>
+            <input type="range" id="speed-slider" name="speed-slider" min="10" max="1000" value="50"
+                oninput="updateSpeed(this.value)">
+            <p>Current Speed: <span id="speed-display">50</span> ms</p>
+        </div>
 
-            <!-- Common container for both control panel and toggle button -->
-            <div class="control-container">
-                <div class="control-panel" id="control-panel">
-                    <div class="grid-wrapper">
-                        <div class="button-grid">
-                            <button onclick="move('up_left')" class="control-button">↖</button>
-                            <button onclick="move('up')" class="control-button">↑</button>
-                            <button onclick="move('up_right')" class="control-button">↗</button>
-                            <button onclick="move('left')" class="control-button">←</button>
-                            <div></div> <!-- Placeholder cell -->
-                            <button onclick="move('right')" class="control-button">→</button>
-                            <button onclick="move('down_left')" class="control-button">↙</button>
-                            <button onclick="move('down')" class="control-button">↓</button>
-                            <button onclick="move('down_right')" class="control-button">↘</button>
-                        </div>
-                        <button onclick="toggleControls()" class="control-button toggle-button"
-                            id="toggle-button">T</button>
+        <div id="zoom-settings" class="zoom-container">
+            <h3>Zoom</h3>
+            <button onclick="zoom('in')">Zoom In (+)</button>
+            <button onclick="zoom('out')">Zoom Out (-)</button>
+        </div>
+
+        <div id="servo-settings" class="servo-position">
+            <h3>Servo Position</h3>
+            <p>Pan (X): <span id="pan-value">90</span>°</p>
+            <p>Tilt (Y): <span id="tilt-value">90</span>°</p>
+        </div>
+    </div>
+
+    <div class="video-container">
+        <img src="/video_feed" id="video-stream" />
+
+        <!-- Ensure the control-container is inside .video-container -->
+        <div class="control-container">
+            <div class="control-panel" id="control-panel">
+                <div class="grid-wrapper">
+                    <div class="button-grid">
+                        <button onclick="move('up_left')" class="control-button">↖</button>
+                        <button onclick="move('up')" class="control-button">↑</button>
+                        <button onclick="move('up_right')" class="control-button">↗</button>
+                        <button onclick="move('left')" class="control-button">←</button>
+                        <div></div> <!-- center placeholder cell -->
+                        <button onclick="move('right')" class="control-button">→</button>
+                        <button onclick="move('down_left')" class="control-button">↙</button>
+                        <button onclick="move('down')" class="control-button">↓</button>
+                        <button onclick="move('down_right')" class="control-button">↘</button>
                     </div>
+                    <button onclick="toggleControls()" class="control-button toggle-button"
+                        id="toggle-button">T</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="servo-position" style="text-align: center; margin: 20px;">
-        <h3>Servo Position</h3>
-        <p>Pan (X): <span id="pan-value">90</span>°</p>
-        <p>Tilt (Y): <span id="tilt-value">90</span>°</p>
-    </div>
-
-    <div class="speed-control">
-        <label for="speed">Movement Speed (ms):</label>
-        <input type="number" id="speed" name="speed" min="10" max="1000" value="50">
-        <button onclick="setSpeed()">Set Speed</button>
-    </div>
-
-    <div class="zoom-control">
-        <button onclick="zoom('in')" class="control-button">Zoom In (+)</button>
-        <button onclick="zoom('out')" class="control-button">Zoom Out (-)</button>
-    </div>
-
     <script>
-        async function move(direction) {
-            try {
-                const formData = new FormData();
-                formData.append('direction', direction);
+        const settingsContainer = document.getElementById('settings-container');
+        const speedSettings = document.getElementById('speed-settings');
+        const zoomSettings = document.getElementById('zoom-settings');
+        const servoSettings = document.getElementById('servo-settings');
 
-                const response = await fetch('{{ url_for("move") }}', {
-                    method: 'POST',
-                    body: formData
-                });
+        let currentSettings = null;
 
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+        function toggleSettings(option) {
+            if (currentSettings === option) {
+                settingsContainer.style.display = 'none';
+                currentSettings = null;
+
+                if (option === 'servo') {
+                    clearInterval(servoPollingInterval);
+                    servoPollingInterval = null;
                 }
-                const data = await response.json();
-                if (data.status !== 'success') {
-                    throw new Error('Movement failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Failed to move camera: ' + error.message);
+
+                return;
             }
+
+            settingsContainer.style.display = 'flex';
+
+            speedSettings.style.display = 'none';
+            zoomSettings.style.display = 'none';
+            servoSettings.style.display = 'none';
+
+            if (option === 'speed') {
+                speedSettings.style.display = 'block';
+            } else if (option === 'zoom') {
+                zoomSettings.style.display = 'flex';
+            } else if (option === 'servo') {
+                servoSettings.style.display = 'block';
+                startServoPolling();
+            }
+
+            currentSettings = option;
         }
 
-        async function setSpeed() {
-            try {
-                const speed = document.getElementById('speed').value;
-                const formData = new FormData();
-                formData.append('speed', speed);
+        function updateSpeed(value) {
+            document.getElementById('speed-display').innerText = value;
+            const formData = new FormData();
+            formData.append('speed', value);
 
-                const response = await fetch('{{ url_for("set_speed") }}', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const data = await response.json();
-                if (data.status !== 'success') {
-                    throw new Error('Speed update failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Failed to set speed: ' + error.message);
-            }
+            fetch('{{ url_for("set_speed") }}', {
+                method: 'POST',
+                body: formData
+            }).catch(err => console.error('Failed to update speed:', err));
         }
 
         async function zoom(action) {
@@ -221,8 +306,95 @@
             }
         }
 
-        // Fetch servo position every 500ms
-        setInterval(fetchServoPosition, 500);
+        // async function move(direction) {
+        //     try {
+        //         const formData = new FormData();
+        //         formData.append('direction', direction);
+
+        //         const response = await fetch('{{ url_for("move") }}', {
+        //             method: 'POST',
+        //             body: formData
+        //         });
+
+        //         if (!response.ok) {
+        //             throw new Error('Network response was not ok');
+        //         }
+        //         const data = await response.json();
+        //         if (data.status !== 'success') {
+        //             throw new Error('Movement failed');
+        //         }
+        //     } catch (error) {
+        //         console.error('Error:', error);
+        //         alert('Failed to move camera: ' + error.message);
+        //     }
+        // }
+
+        // async function setSpeed() {
+        //     try {
+        //         const speed = document.getElementById('speed').value;
+        //         const formData = new FormData();
+        //         formData.append('speed', speed);
+
+        //         const response = await fetch('{{ url_for("set_speed") }}', {
+        //             method: 'POST',
+        //             body: formData
+        //         });
+
+        //         if (!response.ok) {
+        //             throw new Error('Network response was not ok');
+        //         }
+        //         const data = await response.json();
+        //         if (data.status !== 'success') {
+        //             throw new Error('Speed update failed');
+        //         }
+        //     } catch (error) {
+        //         console.error('Error:', error);
+        //         alert('Failed to set speed: ' + error.message);
+        //     }
+        // }
+
+        // async function zoom(action) {
+        //     try {
+        //         const formData = new FormData();
+        //         formData.append('zoom', action);
+
+        //         const response = await fetch('{{ url_for("zoom") }}', {
+        //             method: 'POST',
+        //             body: formData
+        //         });
+
+        //         if (!response.ok) {
+        //             throw new Error('Zoom request failed');
+        //         }
+        //     } catch (error) {
+        //         console.error('Error:', error);
+        //         alert('Failed to zoom: ' + error.message);
+        //     }
+        // }
+
+        async function fetchServoPosition() {
+            try {
+                const response = await fetch('{{ url_for("get_servo_position") }}');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch servo position');
+                }
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('pan-value').innerText = data.pan;
+                    document.getElementById('tilt-value').innerText = data.tilt;
+                } else {
+                    throw new Error('Error in servo data');
+                }
+            } catch (error) {
+                console.error('Error fetching servo position:', error.message);
+            }
+        }
+
+        function startServoPolling() {
+            fetchServoPosition();
+            servoPollingInterval = setInterval(fetchServoPosition, 500);
+        }
 
         function toggleControls() {
             const grid = document.querySelector('.button-grid');
