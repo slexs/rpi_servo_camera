@@ -91,7 +91,7 @@ def reset():
 
     # Reset zoom to 1.0 (no zoom)
     camera.zoom_level = 1.0
-    
+
     # Apply the zoom settings
     camera.set_zoom(zoom_in=False)  # calling set_zoom with zoom_in=False will ensure it doesn't go beyond min zoom
     camera.set_zoom(zoom_in=False)  # If needed multiple times to ensure no zoom.
@@ -121,6 +121,13 @@ def set_speed():
     global movement_speed
     speed_ms = int(request.form['speed'])
     movement_speed = speed_ms / 1000.0  # Convert ms to seconds
+    return {'status': 'success'}
+
+@app.route('/set_increment', methods=['POST'])
+def set_increment():
+    global INCREMENT
+    increment_value = int(request.form['increment'])
+    INCREMENT = increment_value  # Update the global increment value
     return {'status': 'success'}
 
 @app.route('/move', methods=['POST'])

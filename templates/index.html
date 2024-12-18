@@ -41,33 +41,27 @@
             right: 0;
             bottom: 0;
             display: none;
-            /* Hidden by default */
+            /* Only show/hide using display, no extra class */
             justify-content: center;
             align-items: flex-start;
-            background-color: rgba(0, 0, 0, 0.7);
+            /* background-color: rgba(0, 0, 0, 0.7); */
+            background-color: transparent;
             padding: 20px;
             color: white;
             z-index: 9999;
-        }
-
-        .visible {
-            display: flex !important;
-            /* Use a class to show the container */
         }
 
         .content-panel {
             background: rgba(0, 0, 0, 0.5);
             border-radius: 8px;
             padding: 20px;
-            margin-top: 50px;
-            /* A single container that will be repopulated or shown/hidden */
+            margin-top: 10px;
         }
 
         .slider-container,
         .zoom-container,
         .servo-position {
             display: none;
-            /* Hide by default, show the active one */
         }
 
         .video-container {
@@ -150,30 +144,36 @@
 
 <body>
     <div class="menu-bar">
-        <button onclick="toggleSettings('speed')">Movement Speed</button>
+        <button onclick="toggleSettings('speed')">Adjust Movement </button>
         <button onclick="toggleSettings('zoom')">Zoom</button>
         <button onclick="toggleSettings('servo')">Servo Position</button>
         <button onclick="resetCamera()">Reset Camera</button>
     </div>
 
-    <div id="settings-container" class="settings-container">
-        <div class="content-panel">
+    <div id="settings-container" class="settings-container" onclick="closeSettings()">
+        <div class="content-panel" onclick="event.stopPropagation()">
             <div id="speed-settings" class="slider-container">
-                <h3>Movement Speed</h3>
+                <!-- Movement Speed Slider -->
                 <label for="speed-slider">Speed (ms):</label>
                 <input type="range" id="speed-slider" name="speed-slider" min="10" max="1000" value="50"
                     oninput="updateSpeed(this.value)">
                 <p>Current Speed: <span id="speed-display">50</span> ms</p>
+
+                <!-- Movement Increment Slider -->
+                <label for="increment-slider">Increment:</label>
+                <input type="range" id="increment-slider" name="increment-slider" min="1" max="10" value="1"
+                    oninput="updateIncrement(this.value)">
+                <p>Current Increment: <span id="increment-display">1</span></p>
             </div>
 
             <div id="zoom-settings" class="zoom-container">
-                <h3>Zoom</h3>
+                <!-- <h3>Zoom</h3> -->
                 <button onclick="zoom('in')">Zoom In (+)</button>
                 <button onclick="zoom('out')">Zoom Out (-)</button>
             </div>
 
             <div id="servo-settings" class="servo-position">
-                <h3>Servo Position</h3>
+                <!-- <h3>Servo Position</h3> -->
                 <p>Pan (X): <span id="pan-value">90</span>°</p>
                 <p>Tilt (Y): <span id="tilt-value">90</span>°</p>
             </div>
@@ -182,7 +182,6 @@
 
     <div class="video-container" id="video-container">
         <img src="/video_feed" id="video-stream" />
-
         <div class="control-container">
             <div class="control-panel" id="control-panel">
                 <div class="grid-wrapper">
@@ -191,7 +190,7 @@
                         <button onclick="move('up')" class="control-button">↑</button>
                         <button onclick="move('up_right')" class="control-button">↗</button>
                         <button onclick="move('left')" class="control-button">←</button>
-                        <div></div> <!-- center placeholder cell -->
+                        <div></div>
                         <button onclick="move('right')" class="control-button">→</button>
                         <button onclick="move('down_left')" class="control-button">↙</button>
                         <button onclick="move('down')" class="control-button">↓</button>
@@ -213,41 +212,23 @@
         let currentSettings = null;
         let servoPollingInterval = null;
 
-        async function move(direction) {
-            try {
-                const formData = new FormData();
-                formData.append('direction', direction);
+        function closeSettings() {
+            settingsContainer.style.display = 'none';
+            speedSettings.style.display = 'none';
+            zoomSettings.style.display = 'none';
+            servoSettings.style.display = 'none';
 
-                const response = await fetch('{{ url_for("move") }}', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const data = await response.json();
-                if (data.status !== 'success') {
-                    throw new Error('Movement failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Failed to move camera: ' + error.message);
-            }
+            stopServoPolling();
+            currentSettings = null;
         }
 
         function toggleSettings(option) {
             if (currentSettings === option) {
-                settingsContainer.classList.remove('visible');
-                settingsContainer.style.display = 'none';
-                hideAllSettings();
-                stopServoPolling();
-                currentSettings = null;
+                closeSettings();
                 return;
             }
 
-            // Show settings container
-            settingsContainer.classList.add('visible');
+            // Show the settings container
             settingsContainer.style.display = 'flex';
             hideAllSettings();
 
@@ -273,6 +254,29 @@
             if (servoPollingInterval) {
                 clearInterval(servoPollingInterval);
                 servoPollingInterval = null;
+            }
+        }
+
+        async function move(direction) {
+            try {
+                const formData = new FormData();
+                formData.append('direction', direction);
+
+                const response = await fetch('{{ url_for("move") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                if (data.status !== 'success') {
+                    throw new Error('Movement failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to move camera: ' + error.message);
             }
         }
 
@@ -337,13 +341,25 @@
             grid.style.display = (grid.style.display === 'none') ? 'inline-grid' : 'none';
         }
 
+        function updateIncrement(value) {
+            document.getElementById('increment-display').innerText = value;
+
+            const formData = new FormData();
+            formData.append('increment', value);
+
+            fetch('{{ url_for("set_increment") }}', {
+                method: 'POST',
+                body: formData
+            }).catch(err => console.error('Failed to update increment:', err));
+        }
+
         async function resetCamera() {
             try {
                 const response = await fetch('{{ url_for("reset") }}', { method: 'POST' });
                 if (!response.ok) {
                     throw new Error('Reset request failed');
                 }
-                // Optionally, update the UI to reflect reset state
+                // Update UI to reflect reset state
                 document.getElementById('pan-value').innerText = 90;
                 document.getElementById('tilt-value').innerText = 90;
             } catch (error) {
