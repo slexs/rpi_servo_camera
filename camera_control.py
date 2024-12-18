@@ -28,7 +28,9 @@ class Camera:
         self.camera = Picamera2()
         
         # Set maximum resolution (3280x2464)
-        config = self.camera.create_preview_configuration({"size": (3280, 2464)})
+        # config = self.camera.create_preview_configuration({"size": (3280, 2464)})
+        # config = self.camera.create_preview_configuration({"size": (1640, 1232)})
+        config = self.camera.create_preview_configuration({"size": (2592, 1944)})
         self.camera.configure(config)
         self.camera.start()
         
@@ -80,11 +82,20 @@ def video_feed():
 
 @app.route('/zoom', methods=['POST'])
 def zoom():
+    start_time = time.time()
     action = request.form['zoom']
+
+    # Log before zoom action
+    print("Zoom action started:", action, "at", time.time() - start_time, "s")
+
     if action == 'in':
         camera.set_zoom(zoom_in=True)
     elif action == 'out':
         camera.set_zoom(zoom_in=False)
+
+    # Log after zoom action
+    print("Zoom action completed at", time.time() - start_time, "s")
+
     return {'status': 'success'}
 
 @app.route('/set_speed', methods=['POST'])
@@ -96,6 +107,7 @@ def set_speed():
 
 @app.route('/move', methods=['POST'])
 def move():
+    start_time = time.time()
     global pan_angle, tilt_angle
     direction = request.form['direction']
 
@@ -131,6 +143,9 @@ def move():
     time.sleep(movement_speed)
     kit.servo[0].angle = pan_angle
     kit.servo[1].angle = tilt_angle
+
+    end_time = time.time()
+    print("Move request duration:", end_time - start_time, "seconds")
     return {'status': 'success'}
 
 @app.route('/get_servo_position', methods=['GET'])
