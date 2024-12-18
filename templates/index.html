@@ -57,23 +57,43 @@
             /* Ensures it stays visible and clickable */
         }
 
-        .video-container {
-            position: relative;
-            margin: 20px auto;
-            max-width: 60%;
-            border: 2px solid #333;
-            border-radius: 8px;
+        #video-container {
+            width: 100%;
+            max-width: 100%;
+            /* Ensure it doesn't overflow */
+            height: auto;
+            /* Automatically adjust height */
+            display: flex;
+            justify-content: center;
+            /* Center the video horizontally */
+            align-items: center;
+            /* Center the video vertically */
             overflow: hidden;
+            /* Prevent video from overflowing */
+            position: relative;
+            /* For proper scaling */
+        }
+
+        #video-stream {
+            width: 100%;
+            /* Fit the container's width */
+            height: auto;
+            /* Maintain aspect ratio */
+            max-height: 100vh;
+            /* Ensure it doesn't exceed the viewport height */
+            object-fit: contain;
+            /* Ensure video scales without distortion */
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>Camera Control</h1>
+        <!-- <h1>Camera Control</h1> -->
 
         <div class="video-container">
-            <img src="{{ url_for('video_feed') }}" class="video-feed" alt="Live Camera Feed">
+            <!-- <img src="{{ url_for('video_feed') }}" class="video-feed" alt="Live Camera Feed"> -->
+            <img src="/video_feed" id="video-stream" />
 
             <!-- Common container for both control panel and toggle button -->
             <div class="control-container">
@@ -230,6 +250,25 @@
                     break;
             }
         });
+
+        window.addEventListener('resize', function () {
+            const videoStream = document.getElementById('video-stream');
+            const container = document.getElementById('video-container');
+            const aspectRatio = 3280 / 2464;
+
+            let width = container.clientWidth;
+            let height = container.clientHeight;
+
+            if (width / height > aspectRatio) {
+                width = height * aspectRatio;
+            } else {
+                height = width / aspectRatio;
+            }
+
+            videoStream.style.width = `${width}px`;
+            videoStream.style.height = `${height}px`;
+        });
+
     </script>
 </body>
 
