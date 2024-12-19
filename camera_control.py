@@ -220,7 +220,7 @@ if __name__ == '__main__':
     # profiler = cProfile.Profile()
     # profiler.enable()
 
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)#, use_reloader=False) 
+    app.run(host='192.168.68.65', port=5000, debug=False, threaded=True)#, use_reloader=False) 
 
     # PROFILING REPORT
     # profiler.disable()
