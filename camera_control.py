@@ -20,8 +20,8 @@ app = Flask(__name__)
 kit = ServoKit(channels=16)
 
 # Initialize servo angles
-pan_angle = 85  # Pan starting position
-tilt_angle = 19  # Tilt starting position
+pan_angle = 94  # Pan starting position
+tilt_angle = 10  # Tilt starting position
 
 kit.servo[0].angle = pan_angle
 kit.servo[1].angle = tilt_angle
