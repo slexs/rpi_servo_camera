@@ -258,14 +258,23 @@
         }
 
         async function move(direction) {
+            console.log(`Move button pressed: ${direction}`); // Add this
+            const clickTime = new Date(); // Timestamp when the button is clicked
+            console.log(`Button clicked at: ${clickTime.toISOString()}`);
+
             try {
                 const formData = new FormData();
                 formData.append('direction', direction);
 
                 const response = await fetch('{{ url_for("move") }}', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    keepalive: true  // Ensure request persistence
                 });
+
+                const responseTime = new Date(); // Timestamp when the response is received
+                console.log(`Response received at: ${responseTime.toISOString()}`);
+                console.log(`Total time taken: ${responseTime - clickTime} ms`);
 
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
@@ -274,6 +283,7 @@
                 if (data.status !== 'success') {
                     throw new Error('Movement failed');
                 }
+                console.log(`Fetch response status: ${response.status}`); // Add this
             } catch (error) {
                 console.error('Error:', error);
                 alert('Failed to move camera: ' + error.message);
@@ -354,6 +364,7 @@
         }
 
         async function resetCamera() {
+            console.log(`resetCamera button pressed`);
             try {
                 const response = await fetch('{{ url_for("reset") }}', { method: 'POST' });
                 if (!response.ok) {
@@ -362,6 +373,9 @@
                 // Update UI to reflect reset state
                 document.getElementById('pan-value').innerText = 90;
                 document.getElementById('tilt-value').innerText = 90;
+
+                console.log(`Fetch response status: ${response.status}`);
+
             } catch (error) {
                 console.error('Error:', error);
                 alert('Failed to reset camera: ' + error.message);

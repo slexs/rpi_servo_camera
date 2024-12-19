@@ -8,6 +8,13 @@ import io
 import threading
 from time import sleep
 import cv2
+from threading import Thread
+from datetime import datetime
+
+# PROFILING
+# import cProfile
+# import pstats
+# import io
 
 app = Flask(__name__)
 kit = ServoKit(channels=16)
@@ -21,16 +28,16 @@ kit.servo[1].angle = tilt_angle
 
 # Initialize movement speed (delay in seconds)
 movement_speed = 0.05  # Default speed
-INCREMENT = 1
+INCREMENT = 3
 
 class Camera:
     def __init__(self):
         self.camera = Picamera2()
         
         # Set maximum resolution (3280x2464)
-        # config = self.camera.create_preview_configuration({"size": (3280, 2464)})
+        config = self.camera.create_preview_configuration({"size": (3280, 2464)})
         # config = self.camera.create_preview_configuration({"size": (1640, 1232)})
-        config = self.camera.create_preview_configuration({"size": (2592, 1944)})
+        # config = self.camera.create_preview_configuration({"size": (2592, 1944)})
         self.camera.configure(config)
         self.camera.start()
         
@@ -71,18 +78,31 @@ def index():
 
 @app.route('/video_feed')
 def video_feed():
-    def generate():
-        while True:
-            frame = camera.get_frame()
-            yield (b'--frame\r\n'
-                  b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+    return Response(generate_video_feed(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+def generate_video_feed():
+    while True:
+        frame = camera.get_frame()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        time.sleep(0.1)
+
+# @app.route('/video_feed')
+# def video_feed():
+#     def generate():
+#         while True:
+#             frame = camera.get_frame()
+#             yield (b'--frame\r\n'
+#                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
     
-    return Response(generate(),
-                   mimetype='multipart/x-mixed-replace; boundary=frame')
+#     return Response(generate(),
+#                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/reset', methods=['POST'])
 def reset():
+    start_time = time.time()
     global pan_angle, tilt_angle
+
     # Reset servo angles to original starting positions
     pan_angle = 85
     tilt_angle = 19
@@ -94,7 +114,10 @@ def reset():
 
     # Apply the zoom settings
     camera.set_zoom(zoom_in=False)  # calling set_zoom with zoom_in=False will ensure it doesn't go beyond min zoom
-    camera.set_zoom(zoom_in=False)  # If needed multiple times to ensure no zoom.
+    # camera.set_zoom(zoom_in=False)  # If needed multiple times to ensure no zoom.
+
+    end_time = time.time()
+    print(f"Reset operation took {end_time - start_time} seconds")
 
     return {'status': 'success'}
 
@@ -130,8 +153,13 @@ def set_increment():
     INCREMENT = increment_value  # Update the global increment value
     return {'status': 'success'}
 
+def move_servo_thread(servo, angle):
+    servo.angle = angle
+
 @app.route('/move', methods=['POST'])
 def move():
+    request_time = datetime.utcnow()  # Timestamp when the request is received
+    print(f"Request received at: {request_time.isoformat()}")
     start_time = time.time()
     global pan_angle, tilt_angle
     direction = request.form['direction']
@@ -165,9 +193,17 @@ def move():
         pan_angle = max(0, pan_angle - INCREMENT)  # Swapped
         tilt_angle = min(180, tilt_angle + INCREMENT)
 
-    time.sleep(movement_speed)
-    kit.servo[0].angle = pan_angle
-    kit.servo[1].angle = tilt_angle
+    # time.sleep(movement_speed)
+    # kit.servo[0].angle = pan_angle
+    # kit.servo[1].angle = tilt_angle
+
+    Thread(target=move_servo_thread, args=(kit.servo[0], pan_angle)).start()
+    Thread(target=move_servo_thread, args=(kit.servo[1], tilt_angle)).start()
+
+    response_time = datetime.utcnow()  # Timestamp when the response is sent
+    print(f"Request processed and response sent at: {response_time.isoformat()}")
+    print(f"Total processing time: {(response_time - request_time).total_seconds()} seconds")
+    
 
     end_time = time.time()
     print("Move request duration:", end_time - start_time, "seconds")
@@ -180,4 +216,17 @@ def get_servo_position():
     return {'status': 'success', 'pan': pan_angle, 'tilt': tilt_angle}
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False) 
+    # PROFILING
+    # profiler = cProfile.Profile()
+    # profiler.enable()
+
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)#, use_reloader=False) 
+
+    # PROFILING REPORT
+    # profiler.disable()
+    # stream = io.StringIO()
+    # stats = pstats.Stats(profiler, stream=stream)
+    # stats.strip_dirs()
+    # stats.sort_stats("cumulative")  # Sort by cumulative time
+    # stats.print_stats()
+    # print(stream.getvalue())  # Output profile stats to the console or save to a file
