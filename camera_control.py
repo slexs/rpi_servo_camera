@@ -1,3 +1,4 @@
+import logging
 from flask import Flask, render_template, request, redirect, url_for, Response
 from adafruit_servokit import ServoKit
 import time
@@ -5,23 +6,32 @@ import sys
 sys.path.append('/usr/lib/python3.11')  # Add system Python path
 from picamera2 import Picamera2
 import io
-import threading
+# import threading
+from threading import Thread, Event, Lock
 from time import sleep
 import cv2
 from threading import Thread
-from datetime import datetime
+from datetime import datetime, timedelta
+import os
 
-# PROFILING
-# import cProfile
-# import pstats
-# import io
+# Set up logging
+log_file_path = "/home/netrom/scripts/rpi_servo_camera/backend.log"
+os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler(log_file_path),
+        logging.StreamHandler()
+    ]
+)
 
 app = Flask(__name__)
 kit = ServoKit(channels=16)
 
 # Initialize servo angles
-pan_angle = 94  # Pan starting position
-tilt_angle = 10  # Tilt starting position
+pan_angle = 64  # Pan starting position
+tilt_angle = 19  # Tilt starting position
 
 kit.servo[0].angle = pan_angle
 kit.servo[1].angle = tilt_angle
@@ -32,19 +42,63 @@ INCREMENT = 3
 
 class Camera:
     def __init__(self):
-        self.camera = Picamera2()
-        
-        # Set maximum resolution (3280x2464)
-        config = self.camera.create_preview_configuration({"size": (3280, 2464)})
-        # config = self.camera.create_preview_configuration({"size": (1640, 1232)})
-        # config = self.camera.create_preview_configuration({"size": (2592, 1944)})
-        self.camera.configure(config)
-        self.camera.start()
+        # self.camera = Picamera2()
+        self.camera = None
+        self.running = False
+        self.lock = Lock()  # Prevent concurrent access
         
         # Initialize zoom level (1.0 = no zoom)
         self.zoom_level = 1.0
         self.max_zoom = 4.0  # Max 4x zoom
         self.min_zoom = 1.0  # No zoom
+        
+    def start(self):
+        if not self.running:
+            try:
+                self.camera = Picamera2()
+                config = self.camera.create_preview_configuration({"size": (3280, 2464)})
+                self.camera.configure(config)
+                self.camera.start()
+                self.running = True
+                logging.info("Camera started successfully.")
+                
+            except RuntimeError as e:
+                logging.error(f"Failed to start the camera: {e}")
+                self.camera = None  # Ensure the camera object is reset
+                self.running = False
+
+    def stop(self):
+        with self.lock:
+            if self.running:
+                try:
+                    self.camera.stop()
+                    self.camera.close()
+                    logging.info("Camera stopped successfully.")
+                except Exception as e:
+                    logging.error(f"Error while stopping the camera: {e}")
+                finally:
+                    self.camera = None
+                    self.running = False
+                    
+    def capture_photo(self, save_directory):
+        with self.lock:
+            try:
+                if not self.running:
+                    logging.info("Camera is not running. Starting it for timelapse photo capture.")
+                    self.start()
+                
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = os.path.join(save_directory, f"photo_{timestamp}.jpg")
+                self.camera.capture_file(filename)
+                logging.info(f"Photo saved: {filename}")
+                
+            except Exception as e:
+                logging.error(f"Error capturing photo: {e}")
+            finally:
+                # Stop the camera if it was started just for this photo
+                if not timelapse_event.is_set() and self.running:
+                    logging.info("Stopping camera after timelapse photo capture.")
+                    self.stop()
 
     def set_zoom(self, zoom_in=True):
         # Adjust zoom level
@@ -63,21 +117,106 @@ class Camera:
         self.camera.set_controls({"ScalerCrop": (x_offset, y_offset, width, height)})
 
     def get_frame(self):
-        frame = self.camera.capture_array()
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
-        _, jpeg = cv2.imencode('.jpg', frame)
-        return jpeg.tobytes()
+        with self.lock:
+            if not self.running:
+                return None
+            frame = self.camera.capture_array()
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # Convert frame to JPEG format
+            _, jpeg = cv2.imencode('.jpg', frame)
+            return jpeg.tobytes()
 
+    def generate_video_feed():
+        while True:
+            try:
+                frame = camera.get_frame()
+                if frame is None:
+                    print("No frame captured.")
+                    continue  # Skip if no frame is captured
+                yield (b'--frame\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            except Exception as e:
+                print(f"Error in video feed generation: {e}")
+            time.sleep(0.1)
 
 # Initialize camera
 camera = Camera()
+
+# Initialize timelapse
+timelapse_thread = None
+timelapse_event = Event()
+timelapse_interval = 2 * 3600  # Default to 2 hours in seconds
+
+# Idle timeout handling
+idle_timeout = timedelta(minutes=1)  # Time after which resources will be stopped
+last_activity = datetime.now()
+activity_lock = Lock()
+stop_event = Event()
+
+def timelapse_worker():
+    save_directory = "/home/netrom/scripts/rpi_servo_camera/timelapse_photos"
+    os.makedirs(save_directory, exist_ok=True)
+    while timelapse_event.is_set():
+        try:
+            camera.capture_photo(save_directory)
+            logging.info("Timelapse photo captured.")
+        except Exception as e:
+            logging.error(f"Error during timelapse capture: {e}")
+        time.sleep(timelapse_interval)
+
+@app.route('/start_timelapse', methods=['POST'])
+def start_timelapse():
+    global timelapse_thread
+    if not timelapse_event.is_set():
+        timelapse_event.set()
+        timelapse_thread = Thread(target=timelapse_worker, daemon=True)
+        timelapse_thread.start()
+        logging.info("Timelapse started.")
+        return {'status': 'Timelapse started'}
+    return {'status': 'Timelapse already running'}
+
+@app.route('/stop_timelapse', methods=['POST'])
+def stop_timelapse():
+    timelapse_event.clear()
+    logging.info("Timelapse stopped.")
+    return {'status': 'Timelapse stopped'}
+
+@app.route('/set_timelapse_interval', methods=['POST'])
+def set_timelapse_interval():
+    print("Starting timelapse")
+    global timelapse_interval
+    interval = int(request.form['interval'])  # Interval in seconds
+    timelapse_interval = interval
+    logging.info(f"Timelapse interval set to {interval} seconds.")
+    return {'status': f'Timelapse interval set to {interval} seconds'}
+
+def idle_monitor():
+    while not stop_event.is_set():
+        with activity_lock:
+            if datetime.now() - last_activity > idle_timeout:
+                logging.info("Idle timeout reached. Stopping resources.")
+                camera.stop()
+        time.sleep(5)  # Check every 5 seconds
+
+Thread(target=idle_monitor, daemon=True).start()
+
+@app.before_request
+def update_last_activity():
+    global last_activity
+    with activity_lock:
+        last_activity = datetime.now()
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
+@app.route('/camera_status', methods=['GET'])
+def camera_status():
+    return {'status': 'running' if camera.running else 'idle'}
+
 @app.route('/video_feed')
 def video_feed():
+    camera.start()  # Start camera only when video feed is requested
     return Response(generate_video_feed(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 def generate_video_feed():
@@ -87,16 +226,12 @@ def generate_video_feed():
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
         time.sleep(0.1)
 
-# @app.route('/video_feed')
-# def video_feed():
-#     def generate():
-#         while True:
-#             frame = camera.get_frame()
-#             yield (b'--frame\r\n'
-#                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-    
-#     return Response(generate(),
-#                    mimetype='multipart/x-mixed-replace; boundary=frame')
+@app.route('/restart_video_feed', methods=['POST'])
+def restart_video_feed():
+    if not camera.running:
+        logging.info("Restarting video feed.")
+        camera.start()
+    return {'status': 'Camera restarted'}
 
 @app.route('/reset', methods=['POST'])
 def reset():
@@ -104,8 +239,8 @@ def reset():
     global pan_angle, tilt_angle
 
     # Reset servo angles to original starting positions
-    pan_angle = 85
-    tilt_angle = 19
+    pan_angle = 64  # Pan starting position
+    tilt_angle = 19  # Tilt starting position
     kit.servo[0].angle = pan_angle
     kit.servo[1].angle = tilt_angle
 
@@ -115,27 +250,18 @@ def reset():
     # Apply the zoom settings
     camera.set_zoom(zoom_in=False)  # calling set_zoom with zoom_in=False will ensure it doesn't go beyond min zoom
     # camera.set_zoom(zoom_in=False)  # If needed multiple times to ensure no zoom.
-
-    end_time = time.time()
-    print(f"Reset operation took {end_time - start_time} seconds")
+    logging.info("Resetting camera zoom and angles")
 
     return {'status': 'success'}
 
 @app.route('/zoom', methods=['POST'])
 def zoom():
-    start_time = time.time()
     action = request.form['zoom']
-
-    # Log before zoom action
-    print("Zoom action started:", action, "at", time.time() - start_time, "s")
 
     if action == 'in':
         camera.set_zoom(zoom_in=True)
     elif action == 'out':
         camera.set_zoom(zoom_in=False)
-
-    # Log after zoom action
-    print("Zoom action completed at", time.time() - start_time, "s")
 
     return {'status': 'success'}
 
@@ -158,15 +284,13 @@ def move_servo_thread(servo, angle):
 
 @app.route('/move', methods=['POST'])
 def move():
-    request_time = datetime.utcnow()  # Timestamp when the request is received
-    print(f"Request received at: {request_time.isoformat()}")
-    start_time = time.time()
     global pan_angle, tilt_angle
     direction = request.form['direction']
 
     if direction == 'left':
         # Swap logic: Pan angle should increase when moving left
         pan_angle = min(180, pan_angle + INCREMENT)
+        
     elif direction == 'right':
         # Swap logic: Pan angle should decrease when moving right
         pan_angle = max(0, pan_angle - INCREMENT)
@@ -193,20 +317,8 @@ def move():
         pan_angle = max(0, pan_angle - INCREMENT)  # Swapped
         tilt_angle = min(180, tilt_angle + INCREMENT)
 
-    # time.sleep(movement_speed)
-    # kit.servo[0].angle = pan_angle
-    # kit.servo[1].angle = tilt_angle
-
     Thread(target=move_servo_thread, args=(kit.servo[0], pan_angle)).start()
-    Thread(target=move_servo_thread, args=(kit.servo[1], tilt_angle)).start()
-
-    response_time = datetime.utcnow()  # Timestamp when the response is sent
-    print(f"Request processed and response sent at: {response_time.isoformat()}")
-    print(f"Total processing time: {(response_time - request_time).total_seconds()} seconds")
-    
-
-    end_time = time.time()
-    print("Move request duration:", end_time - start_time, "seconds")
+    Thread(target=move_servo_thread, args=(kit.servo[1], tilt_angle)).start()    
     return {'status': 'success'}
 
 @app.route('/get_servo_position', methods=['GET'])
@@ -216,17 +328,12 @@ def get_servo_position():
     return {'status': 'success', 'pan': pan_angle, 'tilt': tilt_angle}
 
 if __name__ == '__main__':
-    # PROFILING
-    # profiler = cProfile.Profile()
-    # profiler.enable()
-
-    app.run(host='192.168.68.65', port=5000, debug=False, threaded=True)#, use_reloader=False) 
-
-    # PROFILING REPORT
-    # profiler.disable()
-    # stream = io.StringIO()
-    # stats = pstats.Stats(profiler, stream=stream)
-    # stats.strip_dirs()
-    # stats.sort_stats("cumulative")  # Sort by cumulative time
-    # stats.print_stats()
-    # print(stream.getvalue())  # Output profile stats to the console or save to a file
+    # Start the camera and timelapse on app start
+    camera.start()
+    logging.info("Flask app started. Camera initialized.")
+    if not timelapse_event.is_set():
+        timelapse_event.set()
+        timelapse_thread = Thread(target=timelapse_worker, daemon=True)
+        timelapse_thread.start()
+        logging.info("Timelapse started automatically.")
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
